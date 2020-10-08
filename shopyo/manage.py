@@ -1,25 +1,52 @@
-from utils.gen_modules import generate_modules
-import os
-import argparse
+import sys
 
-parser = argparse.ArgumentParser()
-parser.add_argument("command", help="command to give")
-# parser.add_argument("sec_param", help="the exponent")
-args = parser.parse_args()
+from flask_migrate import Migrate
+from flask_migrate import MigrateCommand
+from flask_script import Manager
+
+from shopyoapi.init import db
+from app import app
+
+from shopyoapi.cmd import clean
+from shopyoapi.cmd import initialise
+from shopyoapi.cmd import create_module
+from shopyoapi.database import autoload_models
+
+migrate = Migrate(app, db, compare_type=True)
+manager = Manager(app)
+
+manager.add_command("db", MigrateCommand)
 
 
-def exec_gen_modules():
-    p = os.path.abspath(__file__)
-    slash = os.path.sep
-    path_now = slash.join(p.split(slash)[:-1])
-    generate_modules(path_now, 'all')
+def runserver():
+    app.run()
 
-commands = {
-    'loadmodules': exec_gen_modules
-}
 
-if __name__ == '__main__':
-    try:
-        commands[args.command]()
-    except KeyError:
-        print('...')
+def rundebug():
+    app.run(debug=True, host="0.0.0.0")
+
+
+def custom_commands(args):
+    # non migration commands
+    if args[1] != "db":
+        if args[1] == "initialise":
+            autoload_models()
+            initialise()
+        elif args[1] == "clean":
+            clean()
+        elif args[1] == "runserver":
+            runserver()
+        elif args[1] == "rundebug":
+            rundebug()
+        elif args[1] == "test":
+            print("test ok")
+        elif args[1] == 'startapp' and args[2]:
+            create_module(args[2])
+        sys.exit()
+    elif args[1] == "db":
+        autoload_models()
+
+
+if __name__ == "__main__":
+    custom_commands(sys.argv)
+    manager.run()
